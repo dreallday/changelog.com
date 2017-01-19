@@ -6,12 +6,25 @@ defmodule Changelog.Admin.PostController do
   plug :scrub_params, "post" when action in [:create, :update]
 
   def index(conn, params) do
-    page = Post
-    |> order_by([p], desc: p.published_at)
-    |> preload(:author)
-    |> Repo.paginate(params)
+    page =
+      Post.published
+      |> Post.newest_first
+      |> preload(:author)
+      |> Repo.paginate(params)
 
-    render conn, :index, posts: page.entries, page: page
+    scheduled =
+      Post.scheduled
+      |> Post.newest_first
+      |> preload(:author)
+      |> Repo.all
+
+    drafts =
+      Post.unpublished
+      |> Post.newest_first(:inserted_at)
+      |> preload(:author)
+      |> Repo.all
+
+    render(conn, :index, posts: page.entries, scheduled: scheduled, drafts: drafts, page: page)
   end
 
   def new(conn, _params) do

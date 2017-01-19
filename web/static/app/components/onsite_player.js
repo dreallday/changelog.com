@@ -1,75 +1,9 @@
 import { u, ajax } from "umbrellajs";
 import Episode from "components/episode";
 import Log from "components/log";
+import ChangelogAudio from "components/audio";
 
-class ChangelogAudio {
-  constructor() {
-    if (typeof Audio === "undefined") {
-      this.hasAudio = false;
-      return
-    } else {
-      this.hasAudio = true;
-    }
-
-    this.audio = new Audio();
-  }
-
-  load(file, callback) {
-    if (callback) {
-      this.runOnce("canplaythrough", callback);
-    }
-
-    this.audio.src = file;
-    this.audio.load();
-  }
-
-  canPlay() {
-    return this.hasAudio;
-  }
-
-  play() {
-    this.audio.play();
-  }
-
-  pause() {
-    if (!this.playing()) return;
-    this.audio.pause();
-  }
-
-  playing() {
-    return this.audio.duration > 0 && !this.audio.paused;
-  }
-
-  currentSeek() {
-    return this.audio.currentTime;
-  }
-
-  seek(to, before, after) {
-    to = parseInt(to, 10);
-    if (to < 0) to = 0;
-
-    if (before) {
-      this.runOnce("seeking", before);
-    }
-
-    if (after) {
-      this.runOnce("seeked", after);
-    }
-
-    this.audio.currentTime = to;
-  }
-
-  runOnce(eventName, fn) {
-    let listener = () => {
-      fn.call();
-      this.audio.removeEventListener(eventName, listener);
-    }
-
-    this.audio.addEventListener(eventName, listener);
-  }
-}
-
-export default class Player {
+export default class OnsitePlayer {
   constructor(selector) {
     // not using turbolinks:load event because we want this to run exactly once
     window.onload = () => {
@@ -80,72 +14,6 @@ export default class Player {
       this.attachEvents();
       this.attachKeyboardShortcuts();
     }
-  }
-
-  canPlay() {
-    return this.audio.canPlay();
-  }
-
-  isActive() {
-    return this.player.hasClass("podcast-player--is-active");
-  }
-
-  isPlaying() {
-    return this.audio.playing();
-  }
-
-  play() {
-    requestAnimationFrame(this.step.bind(this));
-    this.audio.play();
-    this.playButton.addClass("is-playing").removeClass("is-paused is-loading");
-  }
-
-  pause() {
-    this.audio.pause();
-    this.playButton.addClass("is-paused").removeClass("is-playing is-loading");
-  }
-
-  togglePlayPause() {
-    if (this.audio.playing()) {
-      this.pause();
-    } else {
-      this.play();
-    }
-  }
-
-  seekBy(to) {
-    const currentSeek = this.audio.currentSeek() || 0;
-    this.audio.seek(currentSeek + to);
-  }
-
-  // begins the process of playing the audio, fetching the details
-  load(audioUrl, detailsUrl) {
-    this.resetUI();
-    this.playButton.addClass("is-loading");
-    this.loadAudio(audioUrl);
-    this.loadDetails(detailsUrl);
-  }
-
-  loadAudio(audioUrl) {
-    this.audioLoaded = false;
-    this.audio.load(audioUrl, () => {
-      this.audioLoaded = true;
-      this.play();
-    });
-  }
-
-  loadDetails(detailsUrl) {
-    this.detailsLoaded = false;
-    ajax(detailsUrl, {}, (error, data) => {
-      this.episode = new Episode(data);
-      this.loadUI();
-      this.detailsLoaded = true;
-      this.show();
-      Log.track("Play", {
-        podcast: this.episode.podcastName(),
-        episode: this.episode.title()
-      });
-    });
   }
 
   attachUI(selector) {
@@ -182,17 +50,91 @@ export default class Player {
   attachKeyboardShortcuts() {
     u(document).on("keydown", (event) => {
       if (!this.isActive()) return;
+      if (u(event.target).is("input, textarea")) return;
 
-      // 27 == escape
-      if (event.keyCode == 27) {
-        this.close();
+      switch (event.keyCode) {
+        case 27: // escape
+          this.close();
+          break;
+        case 32: // space bar
+          event.preventDefault();
+          this.togglePlayPause();
+          break;
+        case 83: // s
+          this.changeSpeed();
+          break;
+        default:
       }
+    });
+  }
 
-      // 32 == space bar
-      if (event.keyCode == 32 && !u(event.target).is("input, textarea")) {
-        event.preventDefault();
-        this.togglePlayPause();
-      }
+  canPlay() {
+    return this.audio.canPlay();
+  }
+
+  isActive() {
+    return this.player.hasClass("podcast-player--is-active");
+  }
+
+  isPlaying() {
+    return this.audio.playing();
+  }
+
+  play() {
+    requestAnimationFrame(this.step.bind(this));
+    this.audio.play();
+    this.playButton.addClass("is-playing").removeClass("is-paused is-loading");
+  }
+
+  pause() {
+    this.audio.pause();
+    this.playButton.addClass("is-paused").removeClass("is-playing is-loading");
+  }
+
+  togglePlayPause() {
+    if (this.isPlaying()) {
+      this.pause();
+    } else {
+      this.play();
+    }
+  }
+
+  changeSpeed() {
+    this.audio.changeSpeed();
+  }
+
+  seekBy(to) {
+    const currentSeek = this.audio.currentSeek() || 0;
+    this.audio.seek(currentSeek + to);
+  }
+
+  // begins the process of playing the audio, fetching the details
+  load(audioUrl, detailsUrl) {
+    this.resetUI();
+    this.playButton.addClass("is-loading");
+    this.loadAudio(audioUrl);
+    this.loadDetails(detailsUrl);
+  }
+
+  loadAudio(audioUrl) {
+    this.audioLoaded = false;
+    this.audio.load(audioUrl, () => {
+      this.audioLoaded = true;
+      this.play();
+    });
+  }
+
+  loadDetails(detailsUrl) {
+    this.detailsLoaded = false;
+    ajax(detailsUrl, {}, (error, data) => {
+      this.episode = new Episode(data);
+      this.loadUI();
+      this.detailsLoaded = true;
+      this.show();
+      Log.track("Play", {
+        podcast: this.episode.podcastName(),
+        episode: this.episode.title()
+      });
     });
   }
 
@@ -261,7 +203,7 @@ export default class Player {
       this.track.first().style.width = `${percentComplete}%`;
     }
 
-    if (this.audio.playing()) {
+    if (this.isPlaying()) {
       requestAnimationFrame(this.step.bind(this));
     }
   }

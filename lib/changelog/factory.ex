@@ -16,10 +16,55 @@ defmodule Changelog.Factory do
     }
   end
 
+  def episode_stat_factory do
+    %Changelog.EpisodeStat{
+      date: Timex.today,
+      episode: build(:episode),
+      podcast: build(:podcast),
+      downloads: 0.0,
+      uniques: 0,
+      demographics: %{"agents" => %{}, "countries" => %{}}
+    }
+  end
+
+  def episode_guest_factory do
+    %Changelog.EpisodeGuest{
+      episode: build(:episode),
+      person: build(:person),
+      position: 1
+    }
+  end
+
+  def episode_host_factory do
+    %Changelog.EpisodeHost{
+      episode: build(:episode),
+      person: build(:person),
+      position: 1
+    }
+  end
+
+  def episode_sponsor_factory do
+    %Changelog.EpisodeSponsor{
+      episode: build(:episode),
+      sponsor: build(:sponsor),
+      title: "Google",
+      link_url: "https://google.com",
+      description: "Don't be evil",
+      position: 1
+    }
+  end
+
   def published_episode_factory do
-    %Changelog.Episode{episode_factory | audio_file: stub_audio_file(),
+    %Changelog.Episode{episode_factory() | audio_file: stub_audio_file(),
       published: true,
-      published_at: Timex.now
+      published_at: Timex.subtract(Timex.now, Timex.Duration.from_hours(1))
+    }
+  end
+
+  def scheduled_episode_factory do
+    %Changelog.Episode{episode_factory() | audio_file: stub_audio_file(),
+      published: true,
+      published_at: Timex.add(Timex.now, Timex.Duration.from_hours(1))
     }
   end
 
@@ -48,7 +93,13 @@ defmodule Changelog.Factory do
   end
 
   def published_post_factory do
-    %Changelog.Post{post_factory | published: true, published_at: Timex.now}
+    published_at = Timex.subtract(Timex.now, Timex.Duration.from_hours(1))
+    %Changelog.Post{post_factory() | published: true, published_at: published_at}
+  end
+
+  def scheduled_post_factory do
+    published_at = Timex.add(Timex.now, Timex.Duration.from_hours(1))
+    %Changelog.Post{post_factory() | published: true, published_at: published_at}
   end
 
   def sponsor_factory do
@@ -58,6 +109,6 @@ defmodule Changelog.Factory do
   end
 
   defp stub_audio_file do
-    %{file_name: "test.mp3", updated_at: Ecto.DateTime.from_erl(:calendar.gregorian_seconds_to_datetime(63633830567))}
+    %{file_name: "test.mp3", updated_at: Ecto.DateTime.from_erl(:calendar.gregorian_seconds_to_datetime(63_633_830_567))}
   end
 end

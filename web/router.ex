@@ -25,6 +25,7 @@ defmodule Changelog.Router do
 
   pipeline :public do
     plug Changelog.Plug.LoadPodcasts
+    plug Changelog.Plug.Turbolinks
   end
 
   scope "/admin", Changelog.Admin, as: :admin do
@@ -46,6 +47,12 @@ defmodule Changelog.Router do
     resources "/sponsors", SponsorController
   end
 
+  scope "/api", Changelog, as: :api do
+    pipe_through [:api]
+
+    get "/oembed", ApiController, :oembed
+  end
+
   scope "/", Changelog do
     pipe_through [:browser, :public]
 
@@ -55,10 +62,12 @@ defmodule Changelog.Router do
     get "/sitemap.xml", FeedController, :sitemap
     get "/:slug/feed", FeedController, :podcast
 
-    resources "/posts", PostController, only: [:show]
+    resources "/posts", PostController, only: [:index, :show]
     get "/posts/:id/preview", PostController, :preview, as: :post
 
     get "/slack/gotime", SlackController, :gotime
+
+    get "/search", SearchController, :search
 
     # static pages
     get "/", PageController, :home
@@ -76,6 +85,8 @@ defmodule Changelog.Router do
     get "/soundcheck", PageController, :soundcheck
     get "/team", PageController, :team
     get "/live", PageController, :live
+    get "/privacy", PageController, :privacy
+    get "/terms", PageController, :terms
 
     get "/nightly", PageController, :nightly
     get "/nightly/confirmed", PageController, :nightly_confirmed
@@ -101,7 +112,9 @@ defmodule Changelog.Router do
     get "/:slug/archive", PodcastController, :archive, as: :podcast
 
     get "/:podcast/:slug", EpisodeController, :show, as: :episode
+    get "/:podcast/:slug/embed", EpisodeController, :embed, as: :episode
     get "/:podcast/:slug/preview", EpisodeController, :preview, as: :episode
     get "/:podcast/:slug/play", EpisodeController, :play, as: :episode
+    get "/:podcast/:slug/share", EpisodeController, :share, as: :episode
   end
 end

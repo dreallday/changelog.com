@@ -7,6 +7,15 @@ defmodule Changelog.Helpers.ViewHelpers do
     end
   end
 
+  def comma_separated(number) do
+    number
+    |> Integer.to_char_list
+    |> Enum.reverse
+    |> Enum.chunk(3, 3, [])
+    |> Enum.join(",")
+    |> String.reverse
+  end
+
   def domain_only(url) do
     uri = URI.parse(url)
     uri.host
@@ -75,6 +84,20 @@ defmodule Changelog.Helpers.ViewHelpers do
     text = URI.encode(text)
     related = ["changelog", via] |> List.flatten |> Enum.uniq |> Enum.join(",")
     "https://twitter.com/intent/tweet?text=#{text}&url=#{url}&via=#{via}&related=#{related}"
+  end
+
+  def reddit_url(title, url) do
+    title = URI.encode(title)
+    "http://www.reddit.com/submit?url=#{url}&title=#{title}"
+  end
+
+  def hackernews_url(title, url) do
+    title = URI.encode(title)
+    "http://news.ycombinator.com/submitlink?u=#{url}&t=#{title}"
+  end
+
+  def facebook_url(url) do
+    "https://www.facebook.com/sharer/sharer.php?u=#{url}"
   end
 
   def truncate(string, length) when is_binary(string) do

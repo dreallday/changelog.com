@@ -2,29 +2,33 @@ defmodule Changelog.Podcast do
   use Changelog.Web, :model
   use Arc.Ecto.Schema
 
-  alias Changelog.{Episode, Regexp}
+  alias Changelog.{Episode, EpisodeStat, PodcastHost, Regexp}
 
   schema "podcasts" do
     field :name, :string
     field :slug, :string
     field :status, PodcastStatus
     field :description, :string
+    field :extended_description, :string
     field :vanity_domain, :string
     field :keywords, :string
     field :twitter_handle, :string
     field :itunes_url, :string
     field :ping_url, :string
     field :schedule_note, :string
+    field :download_count, :float
+    field :reach_count, :integer
 
     has_many :episodes, Episode, on_delete: :delete_all
-    has_many :podcast_hosts, Changelog.PodcastHost, on_delete: :delete_all
+    has_many :podcast_hosts, PodcastHost, on_delete: :delete_all
     has_many :hosts, through: [:podcast_hosts, :person]
+    has_many :episode_stats, EpisodeStat
 
-    timestamps
+    timestamps()
   end
 
   @required_fields ~w(name slug status)
-  @optional_fields ~w(vanity_domain schedule_note description keywords twitter_handle itunes_url ping_url)
+  @optional_fields ~w(vanity_domain schedule_note description extended_description keywords twitter_handle itunes_url ping_url)
 
   def master do
   %__MODULE__{
@@ -58,9 +62,9 @@ defmodule Changelog.Podcast do
 
   def get_by_slug(slug) do
     if slug == "master" do
-      master
+      master()
     else
-      public
+      public()
       |> Repo.get_by!(slug: slug)
       |> preload_hosts
     end
@@ -118,7 +122,27 @@ defmodule Changelog.Podcast do
 
   def preload_hosts(podcast) do
     podcast
-    |> Repo.preload(podcast_hosts: {Changelog.PodcastHost.by_position, :person})
+    |> Repo.preload(podcast_hosts: {PodcastHost.by_position, :person})
     |> Repo.preload(:hosts)
+  end
+
+  def update_stat_counts(podcast) do
+    episodes = Repo.all(assoc(podcast, :episodes))
+
+    new_downloads =
+      episodes
+      |> Enum.map(&(&1.download_count))
+      |> Enum.sum
+      |> Kernel./(1)
+      |> Float.round(2)
+
+    new_reach =
+      episodes
+      |> Enum.map(&(&1.reach_count))
+      |> Enum.sum
+
+    podcast
+    |> change(%{download_count: new_downloads, reach_count: new_reach})
+    |> Repo.update!
   end
 end

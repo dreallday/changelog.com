@@ -5,7 +5,6 @@
 # is restricted to this project.
 use Mix.Config
 
-# Configures the endpoint
 config :changelog, Changelog.Endpoint,
   url: [host: "localhost"],
   static_url: [host: "localhost"],
@@ -15,22 +14,17 @@ config :changelog, Changelog.Endpoint,
   pubsub: [name: Changelog.PubSub,
            adapter: Phoenix.PubSub.PG2]
 
-config :changelog, ecto_repos: [Changelog.Repo]
+config :changelog,
+  ecto_repos: [Changelog.Repo],
+  cm_api_token: Base.encode64("#{System.get_env("CM_API_TOKEN")}:x")
 
-# Configures Bamboo
 config :changelog, Changelog.Mailer,
   adapter: Bamboo.LocalAdapter
 
-# Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]
 
-# Import environment specific config. This must remain at the bottom
-# of this file so it overrides the configuration defined above.
-import_config "#{Mix.env}.exs"
-
-# Configure phoenix generators
 config :phoenix, :generators,
   migration: true,
   binary_id: false
@@ -38,3 +32,11 @@ config :phoenix, :generators,
 config :scrivener_html,
   routes_helper: Changelog.Router.Helpers,
   view_style: :semantic
+
+config :ex_aws,
+  access_key_id: {:system, "AWS_ACCESS_KEY_ID"},
+  secret_access_key: {:system, "AWS_SECRET_ACCESS_KEY"}
+
+# Import environment specific config. This must remain at the bottom
+# of this file so it overrides the configuration defined above.
+import_config "#{Mix.env}.exs"

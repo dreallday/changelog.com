@@ -9,7 +9,7 @@ var common = {
       {
         test: /\.js$/,
         exclude: [/node_modules/, /semantic/, /uploads/],
-        loader: "babel",
+        loader: "babel-loader",
         options: {
           presets: ["es2015"]
         }
@@ -20,15 +20,15 @@ var common = {
       },
       {
         test: [/\.sass$/, /\.css$/],
-        loader: ExtractTextPlugin.extract({fallbackLoader: "style", loader: "css!sass"})
+        loader: ExtractTextPlugin.extract({fallbackLoader: "style-loader", loader: "css-loader!sass-loader"})
       },
       {
         test: /\.(png|jpg|gif|svg)$/,
-        loader: "file?name=/images/[name].[ext]"
+        loader: "file-loader?name=/images/[name].[ext]"
       },
       {
         test: /\.(ttf|eot|svg|woff2?)$/,
-        loader: "file?name=/fonts/[name].[ext]",
+        loader: "file-loader?name=/fonts/[name].[ext]",
       }
     ]
   },
@@ -64,8 +64,30 @@ module.exports = [
   }),
   merge(common, {
     entry: [
+      "normalize.css",
+      "./web/static/app/embed.sass",
+      "./web/static/app/embed.js"
+    ],
+    output: {
+      path: "./priv/static",
+      filename: "js/embed.js"
+    },
+    resolve: {
+      modules: [
+        "node_modules",
+        __dirname + "/web/static/app"
+      ]
+    },
+    plugins: [
+      new ExtractTextPlugin("css/embed.css")
+    ]
+  }),
+  merge(common, {
+    entry: [
       "./web/static/semantic/semantic.css",
       "./web/static/semantic/semantic.js",
+      "./web/static/semantic/calendar.css",
+      "./web/static/semantic/calendar.js",
       "./web/static/admin/admin.css",
       "./web/static/admin/admin.js"
     ],

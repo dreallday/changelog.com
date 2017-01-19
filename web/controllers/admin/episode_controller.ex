@@ -1,7 +1,7 @@
 defmodule Changelog.Admin.EpisodeController do
   use Changelog.Web, :controller
 
-  alias Changelog.{Podcast, Episode, EpisodeHost}
+  alias Changelog.{Podcast, Episode, EpisodeHost, EpisodeStat}
 
   plug :assign_podcast
   plug :scrub_params, "episode" when action in [:create, :update]
@@ -13,12 +13,43 @@ defmodule Changelog.Admin.EpisodeController do
   end
 
   def index(conn, params, podcast) do
-    page = Episode
-    |> where([e], e.podcast_id == ^podcast.id)
-    |> order_by([e], desc: e.published_at)
-    |> Repo.paginate(params)
+    episodes = assoc(podcast, :episodes)
 
-    render conn, "index.html", episodes: page.entries, page: page
+    page =
+      episodes
+      |> Episode.published
+      |> Episode.newest_first
+      |> Repo.paginate(params)
+
+    scheduled =
+      episodes
+      |> Episode.scheduled
+      |> Episode.newest_first
+      |> Repo.all
+
+    drafts =
+      episodes
+      |> Episode.unpublished
+      |> Episode.newest_first(:inserted_at)
+      |> Repo.all
+
+    render(conn, "index.html", episodes: page.entries, scheduled: scheduled, drafts: drafts, page: page)
+  end
+
+  def show(conn, %{"id" => slug}, podcast) do
+    episode =
+      podcast
+      |> assoc(:episodes)
+      |> Repo.get_by!(slug: slug)
+      |> Episode.preload_all
+
+    stats =
+      episode
+      |> assoc(:episode_stats)
+      |> EpisodeStat.newest_first
+      |> Repo.all
+
+    render(conn, "show.html", episode: episode, stats: stats)
   end
 
   def new(conn, _params, podcast) do
@@ -34,19 +65,11 @@ defmodule Changelog.Admin.EpisodeController do
       _ -> ""
     end
 
-    default_ts =
-      Timex.now
-      |> Timex.to_erl
-      |> Tuple.delete_at(1)
-      |> Tuple.insert_at(1, {20, 0, 0}) # 2pm US Central
-
     changeset =
       podcast
       |> build_assoc(:episodes,
         episode_hosts: default_hosts,
-        slug: default_slug,
-        recorded_at: default_ts,
-        published_at: default_ts)
+        slug: default_slug)
       |> Episode.changeset
 
     render conn, "new.html", changeset: changeset

@@ -1,10 +1,12 @@
 import Turbolinks from "turbolinks";
-import { u } from "umbrellajs";
-import Player from "components/player";
+import { u, ajax } from "umbrellajs";
+import OnsitePlayer from "components/onsite_player";
 import Slider from "components/slider";
+import Sharer from "components/sharer";
 import Log from "components/log";
 
-const player = new Player("#player");
+const player = new OnsitePlayer("#player");
+const sharer = new Sharer("#share");
 const featured = new Slider(".featured_podcast");
 
 u(document).handle("click", ".js-toggle-nav", function(event) {
@@ -21,6 +23,10 @@ u(document).on("click", "[data-play]", function(event) {
     const clicked = u(event.target).closest("a, button");
     player.load(clicked.attr("href"), clicked.data("play"));
   }
+});
+
+u(document).handle("click", "[data-share]", function(event) {
+  sharer.load(u(this).data("share"));
 });
 
 // open share dialogs in their own window (order matters or next rule will apply)
@@ -68,6 +74,31 @@ u(document).on("submit", "form.js-cm", function(event) {
   const script = document.createElement("script");
   script.src = form.attr("action") + "?callback=afterSubscribe&" + form.serialize();
   document.body.appendChild(script);
+});
+
+// integrate ajax forms with Turbolinks
+u(document).on("submit", "form.js-remote", function(event) {
+  event.preventDefault();
+
+  const form = u(this);
+  const action = form.attr("action");
+  const method = form.attr("method");
+  const data = form.serialize();
+
+  if (method == "get") {
+    return Turbolinks.visit(`${action}?${data}`);
+  }
+
+  const options = {method: method, body: data, headers: {"Turbolinks-Referrer": window.location}};
+  const andThen = function(err, resp, req) {
+    if (req.getResponseHeader("content-type").match(/javascript/)) {
+      eval(resp);
+    } else {
+      document.body = Turbolinks.Snapshot.wrap(resp).body;
+    }
+  }
+
+  ajax(action, options, andThen);
 });
 
 // handle featured sliders

@@ -4,11 +4,22 @@ defmodule Changelog.Admin.EpisodeView do
   import Changelog.Admin.SharedView
   import Scrivener.HTML
 
-  alias Changelog.{EpisodeView, TimeView, Repo}
+  alias Changelog.{Episode, EpisodeView, TimeView, Repo, EpisodeStat}
 
   def audio_filename(episode), do: EpisodeView.audio_filename(episode)
   def audio_url(episode), do: EpisodeView.audio_url(episode)
+  def embed_code(episode), do: EpisodeView.embed_code(episode)
+  def embed_code(episode, podcast), do: EpisodeView.embed_code(episode, podcast)
   def megabytes(episode), do: EpisodeView.megabytes(episode)
+
+  def download_count(episode), do: episode.download_count |> round |> comma_separated
+  def reach_count(episode) do
+    if episode.reach_count > episode.download_count do
+      comma_separated(episode.reach_count)
+    else
+      download_count(episode)
+    end
+  end
 
   def person_from_model_or_params(model, params) do
     (model |> Repo.preload(:person)).person ||
@@ -34,10 +45,23 @@ defmodule Changelog.Admin.EpisodeView do
   end
 
   def show_or_preview(episode) do
-    if episode.published do
+    if Episode.is_public(episode) do
       :show
     else
       :preview
     end
+  end
+
+  def client_name(name) do
+    case name do
+      "AppleCoreMedia" -> "Apple Podcasts"
+      "Mozilla" -> "Browsers"
+      _else -> name
+    end
+  end
+
+  def stat_date(stat) do
+    {:ok, result} = Timex.format(stat.date, "{WDshort}, {M}/{D}")
+    result
   end
 end
